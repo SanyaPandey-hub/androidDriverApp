@@ -7,22 +7,25 @@ import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.graphics.Color;
 import android.location.Location;
+import android.os.Bundle;
 import android.os.Handler;
-import android.os.SystemClock;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.FragmentActivity;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.view.animation.Interpolator;
+import android.support.design.widget.NavigationView;
+import android.support.v4.view.GravityCompat;
+import android.support.v4.widget.DrawerLayout;
+import android.support.v7.app.ActionBarDrawerToggle;
+import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.Toolbar;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.animation.LinearInterpolator;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.Toast;
-
 
 import com.firebase.geofire.GeoFire;
 import com.firebase.geofire.GeoLocation;
@@ -36,7 +39,6 @@ import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.places.AutocompleteFilter;
 import com.google.android.gms.location.places.Place;
-import com.google.android.gms.location.places.ui.PlaceAutocomplete;
 import com.google.android.gms.location.places.ui.PlaceAutocompleteFragment;
 import com.google.android.gms.location.places.ui.PlaceSelectionListener;
 import com.google.android.gms.maps.CameraUpdate;
@@ -78,11 +80,13 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-
-public class  Welcome extends FragmentActivity implements OnMapReadyCallback,
+public class DriverHome extends AppCompatActivity
+        implements NavigationView.OnNavigationItemSelectedListener,
+        OnMapReadyCallback,
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
         LocationListener
+
 
 {
 
@@ -132,40 +136,40 @@ public class  Welcome extends FragmentActivity implements OnMapReadyCallback,
     Runnable drawPathRunnable= new Runnable() {
         @Override
         public void run() {
-           if (index<polyLineList.size()-1)
-           {
-               index++;
-               next = index+1;
-           }
-           if (index < polyLineList.size()-1)
-           {
-               startPostion = polyLineList.get(index);
-               endPosition = polyLineList.get(next);
-           }
+            if (index<polyLineList.size()-1)
+            {
+                index++;
+                next = index+1;
+            }
+            if (index < polyLineList.size()-1)
+            {
+                startPostion = polyLineList.get(index);
+                endPosition = polyLineList.get(next);
+            }
 
-           ValueAnimator valueAnimator = ValueAnimator.ofFloat(0,1);
-           valueAnimator.setDuration(3000);
-           valueAnimator.setInterpolator(new LinearInterpolator());
-           valueAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-               @Override
-               public void onAnimationUpdate(ValueAnimator valueAnimator) {
-                   v = valueAnimator.getAnimatedFraction();
-                   lng=v*endPosition.longitude+(1-v)*startPostion.longitude;
-                   lat=v*endPosition.latitude+(1-v)*startPostion.latitude;
-                   LatLng newPos = new LatLng(lat,lng);
-                   carMarker.setPosition(newPos);
-                   carMarker.setAnchor(0.5f,0.5f);
-                   carMarker.setRotation(getBearing(startPostion,newPos));
-                   mMap.moveCamera(CameraUpdateFactory.newCameraPosition(
-                           new CameraPosition.Builder()
-                           .target(newPos)
-                           .zoom(15.5f)
-                           .build()
-                   ));
-               }
-           });
-           valueAnimator.start();
-           handler.postDelayed(this,3000);
+            ValueAnimator valueAnimator = ValueAnimator.ofFloat(0,1);
+            valueAnimator.setDuration(3000);
+            valueAnimator.setInterpolator(new LinearInterpolator());
+            valueAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                @Override
+                public void onAnimationUpdate(ValueAnimator valueAnimator) {
+                    v = valueAnimator.getAnimatedFraction();
+                    lng=v*endPosition.longitude+(1-v)*startPostion.longitude;
+                    lat=v*endPosition.latitude+(1-v)*startPostion.latitude;
+                    LatLng newPos = new LatLng(lat,lng);
+                    carMarker.setPosition(newPos);
+                    carMarker.setAnchor(0.5f,0.5f);
+                    carMarker.setRotation(getBearing(startPostion,newPos));
+                    mMap.moveCamera(CameraUpdateFactory.newCameraPosition(
+                            new CameraPosition.Builder()
+                                    .target(newPos)
+                                    .zoom(15.5f)
+                                    .build()
+                    ));
+                }
+            });
+            valueAnimator.start();
+            handler.postDelayed(this,3000);
         }
     };
 
@@ -189,8 +193,21 @@ public class  Welcome extends FragmentActivity implements OnMapReadyCallback,
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_welcome);
-      //  handler =new Handler();
+        setContentView(R.layout.activity_driver_home);
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+
+
+        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
+                this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+        drawer.addDrawerListener(toggle);
+        toggle.syncState();
+
+        NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+        navigationView.setNavigationItemSelectedListener(this);
+
+        //Paste here
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
@@ -199,7 +216,7 @@ public class  Welcome extends FragmentActivity implements OnMapReadyCallback,
         //Presence System
         onlineRef = FirebaseDatabase.getInstance().getReference().child(".info/connected");
         currentUserRef = FirebaseDatabase.getInstance().getReference(Common.driver_tb1)
-                        .child(FirebaseAuth.getInstance().getCurrentUser().getUid());
+                .child(FirebaseAuth.getInstance().getCurrentUser().getUid());
         onlineRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
@@ -232,7 +249,7 @@ public class  Welcome extends FragmentActivity implements OnMapReadyCallback,
                     mCurrent.remove();
                     mMap.clear();
                     if(handler != null)
-                    handler.removeCallbacks(drawPathRunnable);
+                        handler.removeCallbacks(drawPathRunnable);
                     Snackbar.make(mapFragment.getView(), "You are offline", Snackbar.LENGTH_SHORT)
                             .show();
                 }
@@ -245,9 +262,9 @@ public class  Welcome extends FragmentActivity implements OnMapReadyCallback,
 
         //Places API
         typeFilter = new AutocompleteFilter.Builder()
-                    .setTypeFilter(AutocompleteFilter.TYPE_FILTER_ADDRESS)
-                    .setTypeFilter(3)
-                    .build();
+                .setTypeFilter(AutocompleteFilter.TYPE_FILTER_ADDRESS)
+                .setTypeFilter(3)
+                .build();
         places = (PlaceAutocompleteFragment) getFragmentManager(). findFragmentById(R.id.place_autocomplete_fragment);
         places.setOnPlaceSelectedListener(new PlaceSelectionListener() {
             @Override
@@ -261,14 +278,14 @@ public class  Welcome extends FragmentActivity implements OnMapReadyCallback,
                 }
                 else
                 {
-                    Toast.makeText(Welcome.this, "Please change your status to ONLINE", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(DriverHome.this, "Please change your status to ONLINE", Toast.LENGTH_SHORT).show();
                 }
 
             }
 
             @Override
             public void onError(Status status) {
-                Toast.makeText(Welcome.this, ""+status.toString(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(DriverHome.this, ""+status.toString(), Toast.LENGTH_SHORT).show();
 
             }
         });
@@ -293,7 +310,7 @@ public class  Welcome extends FragmentActivity implements OnMapReadyCallback,
 
         Token token = new Token(FirebaseInstanceId.getInstance().getToken());
         tokens.child(FirebaseAuth.getInstance().getCurrentUser().getUid())
-                    .setValue(token);
+                .setValue(token);
     }
 
     private void getDirection() {
@@ -371,8 +388,8 @@ public class  Welcome extends FragmentActivity implements OnMapReadyCallback,
                                 polyLineAnimator.start();
 
                                 carMarker = mMap.addMarker(new MarkerOptions().position(currentPosition)
-                                .flat(true)
-                                .icon(BitmapDescriptorFactory.fromResource(R.drawable.car)));
+                                        .flat(true)
+                                        .icon(BitmapDescriptorFactory.fromResource(R.drawable.car)));
 
                                 handler = new Handler();
                                 index=-1;
@@ -387,7 +404,7 @@ public class  Welcome extends FragmentActivity implements OnMapReadyCallback,
 
                         @Override
                         public void onFailure(Call<String> call, Throwable t) {
-                            Toast.makeText(Welcome.this, ""+t.getMessage(), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(DriverHome.this, ""+t.getMessage(), Toast.LENGTH_SHORT).show();
                         }
                     });
 
@@ -441,32 +458,32 @@ public class  Welcome extends FragmentActivity implements OnMapReadyCallback,
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-       switch (requestCode)
-       {
-           case MY_PERMISSION_REQUEST_CODE:
-               if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
-               {
-                   if (checkPlayServices())
-                   {
-                       buildGoogleApiClient();
-                       createLocationRequest();
-                       if (location_switch.isChecked())
-                       {
-                           displayLocation();
-                       }
-                   }
-               }
-       }
+        switch (requestCode)
+        {
+            case MY_PERMISSION_REQUEST_CODE:
+                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
+                {
+                    if (checkPlayServices())
+                    {
+                        buildGoogleApiClient();
+                        createLocationRequest();
+                        if (location_switch.isChecked())
+                        {
+                            displayLocation();
+                        }
+                    }
+                }
+        }
     }
 
     private void setUpLocation() {
-        if(ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)
+        if(ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)
         {
-           // Request runtime permission
+            // Request runtime permission
             ActivityCompat.requestPermissions(this, new String[]{
-                   Manifest.permission.ACCESS_COARSE_LOCATION,
-                    Manifest.permission.ACCESS_FINE_LOCATION
+                    android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                    android.Manifest.permission.ACCESS_FINE_LOCATION
 
             },MY_PERMISSION_REQUEST_CODE);
         }
@@ -488,19 +505,19 @@ public class  Welcome extends FragmentActivity implements OnMapReadyCallback,
 
     @SuppressLint("RestrictedApi")
     private void createLocationRequest() {
-       mLocationRequest = new LocationRequest();
-       mLocationRequest.setInterval(UPDATE_INTERVAL);
-       mLocationRequest.setFastestInterval(FATEST_INTERVAL);
-       mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-       mLocationRequest.setSmallestDisplacement(DISPLACEMENT);
+        mLocationRequest = new LocationRequest();
+        mLocationRequest.setInterval(UPDATE_INTERVAL);
+        mLocationRequest.setFastestInterval(FATEST_INTERVAL);
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        mLocationRequest.setSmallestDisplacement(DISPLACEMENT);
     }
 
     private void buildGoogleApiClient() {
         mGoogleApiClient = new GoogleApiClient.Builder(this)
-                            .addConnectionCallbacks(this)
-                            .addOnConnectionFailedListener(this)
-                            .addApi(LocationServices.API)
-                            .build();
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .addApi(LocationServices.API)
+                .build();
         mGoogleApiClient.connect();
     }
 
@@ -520,8 +537,8 @@ public class  Welcome extends FragmentActivity implements OnMapReadyCallback,
     }
 
     private void stopLocationUpdates() {
-        if(ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)
+        if(ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)
         {
             return;
         }
@@ -529,8 +546,8 @@ public class  Welcome extends FragmentActivity implements OnMapReadyCallback,
     }
 
     private void displayLocation() {
-        if(ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)
+        if(ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)
         {
             return;
         }
@@ -547,9 +564,9 @@ public class  Welcome extends FragmentActivity implements OnMapReadyCallback,
                 LatLng southSide = SphericalUtil.computeOffset(center,100000,180);
 
                 LatLngBounds bounds = LatLngBounds.builder()
-                                        .include(northSide)
-                                        .include(southSide)
-                                        .build();
+                        .include(northSide)
+                        .include(southSide)
+                        .build();
                 places.setBoundsBias(bounds);
                 places.setFilter(typeFilter);
 
@@ -562,9 +579,9 @@ public class  Welcome extends FragmentActivity implements OnMapReadyCallback,
                             mCurrent.remove(); //Remove already marker
                         mCurrent = mMap.addMarker(new MarkerOptions()
 
-                                                .position(new LatLng(latitude,longitude))
-                                                .icon(BitmapDescriptorFactory.fromResource(R.drawable.marker))
-                                                .title("Your Location"));
+                                .position(new LatLng(latitude,longitude))
+                                .icon(BitmapDescriptorFactory.fromResource(R.drawable.marker))
+                                .title("Your Location"));
 
                         //Move camera to this position
                         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude,longitude),15.0f));
@@ -579,31 +596,10 @@ public class  Welcome extends FragmentActivity implements OnMapReadyCallback,
         }
     }
 
-    private void rotateMarker(final Marker mCurrent, final float i, GoogleMap mMap) {
-        final Handler handler = new Handler();
-        final long start = SystemClock.uptimeMillis();
-        final float startRotation = mCurrent.getRotation();
-        final long duration = 1500;
 
-        final Interpolator interpolator = new LinearInterpolator();
-
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
-                long elapsed = SystemClock.uptimeMillis() - start;
-                float t = interpolator.getInterpolation((float)elapsed/duration);
-                float rot = t*i+(1-t)*startRotation;
-                mCurrent.setRotation(-rot > 180?rot/2:rot);
-                if (t<1.0)
-                {
-                    handler.postDelayed(this,16);
-                }
-            }
-        });
-    }
 
     private void startLocationUpdates() {
-        if(ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+        if(ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
                 ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)
         {
             return;
@@ -611,10 +607,81 @@ public class  Welcome extends FragmentActivity implements OnMapReadyCallback,
         LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient,mLocationRequest,this);
     }
 
+    @Override
+    public void onBackPressed() {
+        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+        if (drawer.isDrawerOpen(GravityCompat.START)) {
+            drawer.closeDrawer(GravityCompat.START);
+        } else {
+            super.onBackPressed();
+        }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.driver_home, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+
+
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    @SuppressWarnings("StatementWithEmptyBody")
+    @Override
+    public boolean onNavigationItemSelected(MenuItem item) {
+        // Handle navigation view item clicks here.
+        int id = item.getItemId();
+
+        if (id == R.id.nav_trip_history) {
+            // Handle the camera action
+        } else if (id == R.id.nav_way_bill) {
+
+        } else if (id == R.id.nav_help) {
+
+        } else if (id == R.id.nav_sign_out) {
+
+        } else if (id == R.id.nav_settings) {
+
+        }
+        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+        drawer.closeDrawer(GravityCompat.START);
+        return true;
+    }
+
+    @Override
+    public void onConnected(@Nullable Bundle bundle) {
+        displayLocation();
+        startLocationUpdates();
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+        mGoogleApiClient.connect();
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+
+    }
+
+    @Override
+    public void onLocationChanged(Location location) {
+        Common.mLastLocation = location;
+        displayLocation();
+    }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
-
         try {
             boolean isSuccess = googleMap.setMapStyle(
                     MapStyleOptions.loadRawResourceStyle(this, R.raw.uber_style_map)
@@ -635,30 +702,6 @@ public class  Welcome extends FragmentActivity implements OnMapReadyCallback,
         mMap.getUiSettings().setZoomControlsEnabled(true);
 
 
-    }
-
-    @Override
-    public void onConnected(@Nullable Bundle bundle) {
-        displayLocation();
-        startLocationUpdates();
-
-    }
-
-    @Override
-    public void onConnectionSuspended(int i) {
-        mGoogleApiClient.connect();
-
-    }
-
-    @Override
-    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-
-    }
-
-    @Override
-    public void onLocationChanged(Location location) {
-        Common.mLastLocation = location;
-        displayLocation();
 
     }
 }
