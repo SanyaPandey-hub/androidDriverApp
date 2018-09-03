@@ -1,7 +1,7 @@
 package com.softup.utkarsh.uber.Model;
 
 public class User {
-    private String email,password,name,phone;
+    private String email,password,name,phone,avatarUrl;
 
     public User() {
 
@@ -12,6 +12,15 @@ public class User {
         this.password = password;
         this.name = name;
         this.phone = phone;
+        this.avatarUrl=avatarUrl;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
     }
 
     public String getEmail() {

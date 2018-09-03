@@ -17,6 +17,7 @@ public class Common
     public static final String user_rider_tb1 = "RidersInformation";
     public static final String pickup_request_tb1 = "PickupRequest";
     public static final String token_tb1 = "Tokens";
+    public static final int PICK_IMAGE_REQUEST = 9999 ;
 
     public static User currentUser;
 

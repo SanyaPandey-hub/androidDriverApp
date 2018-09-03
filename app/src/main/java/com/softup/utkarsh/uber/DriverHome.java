@@ -3,10 +3,14 @@ package com.softup.utkarsh.uber;
 import android.Manifest;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
+import android.app.ProgressDialog;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.graphics.Color;
 import android.location.Location;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.annotation.NonNull;
@@ -14,7 +18,10 @@ import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
+import android.support.v7.app.AlertDialog;
+import android.text.TextUtils;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
@@ -25,6 +32,8 @@ import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.animation.LinearInterpolator;
+import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.firebase.geofire.GeoFire;
@@ -57,6 +66,11 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.maps.model.SquareCap;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.EmailAuthProvider;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -64,18 +78,30 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.iid.FirebaseInstanceId;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.OnProgressListener;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 import com.google.maps.android.SphericalUtil;
+import com.rengwuxian.materialedittext.MaterialEditText;
 import com.softup.utkarsh.uber.Common.Common;
 import com.softup.utkarsh.uber.Model.Token;
+import com.softup.utkarsh.uber.Model.User;
 import com.softup.utkarsh.uber.Remote.IGoogleAPI;
+import com.squareup.picasso.Picasso;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
+import de.hdodenhof.circleimageview.CircleImageView;
+import dmax.dialog.SpotsDialog;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -132,6 +158,10 @@ public class DriverHome extends AppCompatActivity
 
     //Presense System
     DatabaseReference onlineRef,currentUserRef;
+
+    //Firebase Storage
+    FirebaseStorage firebaseStorage;
+    StorageReference storageReference;
 
     Runnable drawPathRunnable= new Runnable() {
         @Override
@@ -197,6 +227,10 @@ public class DriverHome extends AppCompatActivity
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+        //Init Firebase Storage
+        firebaseStorage = FirebaseStorage.getInstance();
+        storageReference = firebaseStorage.getReference();
+
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
@@ -206,6 +240,22 @@ public class DriverHome extends AppCompatActivity
 
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
+
+        View navigationHeaderView = navigationView.getHeaderView(0);
+        TextView txtName = (TextView)navigationHeaderView.findViewById(R.id.txtDriverName);
+
+        CircleImageView imageAvatar = (CircleImageView) navigationHeaderView.findViewById(R.id.image_avatar);
+
+        txtName.setText(Common.currentUser.getName());
+
+
+        if (Common.currentUser.getAvatarUrl() != null && !TextUtils.isEmpty(Common.currentUser.getAvatarUrl())) {
+            Picasso.with(this)
+                    .load(Common.currentUser.getAvatarUrl())
+                    .into(imageAvatar);
+        }
+
+
 
         //Paste here
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
@@ -303,6 +353,8 @@ public class DriverHome extends AppCompatActivity
         updateFirebaseToken();
 
     }
+
+
 
     private void updateFirebaseToken() {
         FirebaseDatabase db = FirebaseDatabase.getInstance();
@@ -649,13 +701,325 @@ public class DriverHome extends AppCompatActivity
         } else if (id == R.id.nav_help) {
 
         } else if (id == R.id.nav_sign_out) {
+            signOut();
 
         } else if (id == R.id.nav_settings) {
+
+        }
+        else if (id == R.id.nav_update_info) {
+            showDialogUpdateInfo();
+
+        }
+        else if (id == R.id.nav_change_pwd) {
+            showDialogChangePwd();
 
         }
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
         return true;
+    }
+
+    private void showDialogUpdateInfo() {
+        AlertDialog.Builder alertDialog = new AlertDialog.Builder(DriverHome.this);
+        alertDialog.setTitle("UPDATE INFORMATION");
+        alertDialog.setMessage("Please fill all information");
+        LayoutInflater inflater = this.getLayoutInflater();
+        View layout_pwd = inflater.inflate(R.layout.layout_update_information,null);
+        final MaterialEditText edtName = (MaterialEditText)layout_pwd.findViewById(R.id.edtName);
+        final MaterialEditText edtPhone = (MaterialEditText)layout_pwd.findViewById(R.id.edtPhone);
+        final ImageView image_upload = (ImageView) layout_pwd.findViewById(R.id.image_upload);
+        image_upload.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                chooseImage();
+
+            }
+        });
+
+        alertDialog.setView(layout_pwd);
+
+        //Set Button
+        alertDialog.setPositiveButton("UPDATE", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                    dialogInterface.dismiss();
+                final android.app.AlertDialog waitingDialog = new SpotsDialog(DriverHome.this);
+                waitingDialog.show();
+
+                String name = edtName.getText().toString();
+                String phone = edtPhone.getText().toString();
+                Map<String,Object> updateInfo = new HashMap<>();
+                if (!TextUtils.isEmpty(name))
+                    updateInfo.put("name",name);
+                if (!TextUtils.isEmpty(phone))
+                    updateInfo.put("phone",phone);
+
+                DatabaseReference driverInformations = FirebaseDatabase.getInstance().getReference(Common.user_driver_tb1);
+                driverInformations.child(FirebaseAuth.getInstance().getCurrentUser().getUid())
+                        .updateChildren(updateInfo)
+                        .addOnCompleteListener(new OnCompleteListener<Void>() {
+                            @Override
+                            public void onComplete(@NonNull Task<Void> task) {
+                                if (task.isSuccessful()) {
+                                    Toast.makeText(DriverHome.this, "Information Updated ! !", Toast.LENGTH_SHORT).show();
+
+                                }
+                                else
+                                    Toast.makeText(DriverHome.this, "Information Update Failed !", Toast.LENGTH_SHORT).show();
+                                waitingDialog.dismiss();
+                            }
+                        });
+
+
+
+            }
+        });
+
+        alertDialog.setNegativeButton("CANCEL", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                dialogInterface.dismiss();
+            }
+        });
+
+        alertDialog.show();
+
+    }
+
+    private void chooseImage() {
+        Intent intent = new Intent();
+        intent.setType("image/*");
+        intent.setAction(Intent.ACTION_GET_CONTENT);
+        startActivityForResult(Intent.createChooser(intent,"Select Picture: "),Common.PICK_IMAGE_REQUEST);
+    }
+
+  /*  @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+         if (requestCode == Common.PICK_IMAGE_REQUEST && requestCode == RESULT_OK
+                 && data !=null && data.getData() !=null)
+         {
+             Uri saveUri = data.getData();
+             if (saveUri !=null)
+             {
+                 final ProgressDialog mDialog = new ProgressDialog(this);
+                 mDialog.setMessage("Uploading...");
+                 mDialog.show();
+
+                 String imageName = UUID.randomUUID().toString(); //Random name image upload
+                 final StorageReference imageFolder = storageReference.child("images/"+imageName);
+                 imageFolder.putFile(saveUri)
+                         .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                             @Override
+                             public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                                mDialog.dismiss();
+                                // Toast.makeText(DriverHome.this, "Uploaded !", Toast.LENGTH_SHORT).show();
+                                 imageFolder.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+                                     @Override
+                                     public void onSuccess(Uri uri) {
+                                         Map<String,Object> avatarUpdate = new HashMap<>();
+                                         avatarUpdate.put("avatarUrl",uri.toString());
+                                         DatabaseReference driverInformations = FirebaseDatabase.getInstance().getReference(Common.user_driver_tb1);
+                                         driverInformations.child(FirebaseAuth.getInstance().getCurrentUser().getUid())
+                                                 .updateChildren(avatarUpdate)
+                                                 .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                                     @Override
+                                                     public void onComplete(@NonNull Task<Void> task) {
+                                                         if (task.isSuccessful())
+                                                             Toast.makeText(DriverHome.this, "Uploaded !", Toast.LENGTH_SHORT).show();
+                                                         else
+                                                             Toast.makeText(DriverHome.this, "Upload error !", Toast.LENGTH_SHORT).show();
+                                                     }
+                                                 });
+
+
+                                     }
+                                 });
+
+                             }
+                         })
+                         .addOnProgressListener(new OnProgressListener<UploadTask.TaskSnapshot>() {
+                             @Override
+                             public void onProgress(UploadTask.TaskSnapshot taskSnapshot) {
+                                 double progress = (100.0* taskSnapshot.getBytesTransferred() / taskSnapshot.getTotalByteCount());
+                                 mDialog.setMessage("Uploaded"+progress+"%");
+                             }
+                         });
+
+
+             }
+         }
+    } */
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode != RESULT_OK) {
+            return;
+        }
+        if (requestCode == Common.PICK_IMAGE_REQUEST && requestCode == RESULT_OK
+                && data !=null && data.getData() !=null);
+        {
+            Uri saveUri = data.getData();
+            if (saveUri != null)
+            {
+                final ProgressDialog mDialog = new ProgressDialog(this);
+                mDialog.setMessage("Uploading...");
+                mDialog.show();
+
+                String imageName = UUID.randomUUID().toString(); //Random name image upload
+                final StorageReference imageFolder = storageReference.child("images/"+imageName);
+                imageFolder.putFile(saveUri)
+                        .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                            @Override
+                            public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                                mDialog.dismiss();
+                                //  Toast.makeText(Home.this, "Uploaded", Toast.LENGTH_SHORT).show();
+                                imageFolder.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+                                    @Override
+                                    public void onSuccess(Uri uri) {
+                                        String s = getIntent().getStringExtra("EXTRA_SESSION_ID");
+
+                                        //Update this url to avatar property of User
+                                        Map<String,Object> AvatarUpdate = new HashMap<>();
+                                        AvatarUpdate.put("avatarUrl",uri.toString());
+
+                                        DatabaseReference driverInformations = FirebaseDatabase.getInstance().getReference(Common.user_driver_tb1);
+                                        driverInformations.child(FirebaseAuth.getInstance().getCurrentUser().getUid())
+                                                .updateChildren(AvatarUpdate)
+                                                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                                    @Override
+                                                    public void onComplete(@NonNull Task<Void> task) {
+                                                        if (task.isSuccessful())
+                                                            Toast.makeText(DriverHome.this, "Uploaded", Toast.LENGTH_SHORT).show();
+                                                        else
+                                                            Toast.makeText(DriverHome.this, "Upload error", Toast.LENGTH_SHORT).show();
+
+                                                    }
+                                                });
+
+
+                                    }
+                                });
+
+                            }
+                        })
+                        .addOnProgressListener(new OnProgressListener<UploadTask.TaskSnapshot>() {
+                            @Override
+                            public void onProgress(UploadTask.TaskSnapshot taskSnapshot) {
+                                double progress = (100.0* taskSnapshot.getBytesTransferred() / taskSnapshot.getTotalByteCount());
+                                mDialog.setMessage("Uploaded"+progress+"%");
+                            }
+                        });
+
+            }
+
+        }
+
+
+    }
+
+    private void showDialogChangePwd() {
+        AlertDialog.Builder alertDialog = new AlertDialog.Builder(DriverHome.this);
+        alertDialog.setTitle("CHANGE PASSWORD");
+        alertDialog.setMessage("Please fill all information");
+        LayoutInflater inflater = this.getLayoutInflater();
+        View layout_pwd = inflater.inflate(R.layout.layout_change_pwd,null);
+        final MaterialEditText edtPassword = (MaterialEditText)layout_pwd.findViewById(R.id.edtPassword);
+        final MaterialEditText edtNewPassword = (MaterialEditText)layout_pwd.findViewById(R.id.edtNewPassword);
+        final MaterialEditText edtRepeatPassword = (MaterialEditText)layout_pwd.findViewById(R.id.edtRepeatPassword);
+
+        alertDialog.setView(layout_pwd);
+
+        //Set Button
+        alertDialog.setPositiveButton("CHANGE PASSWORD", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                if (edtPassword.getText().toString().trim().length() == 0 || edtNewPassword.getText().toString().trim().length() == 0 || edtRepeatPassword.getText().toString().trim().length() == 0)
+                {
+                    Toast.makeText(DriverHome.this, "Please enter all the fields !", Toast.LENGTH_SHORT).show();
+                }
+
+
+
+               else if (edtPassword.getText().toString().trim().length() > 0 && edtNewPassword.getText().toString().trim().length() > 0 && edtRepeatPassword.getText().toString().trim().length() > 0)
+                {
+                    final android.app.AlertDialog waitingDialog = new SpotsDialog(DriverHome.this);
+                    waitingDialog.show();
+                    if (edtNewPassword.getText().toString().equals(edtRepeatPassword.getText().toString())) {
+                        String email = FirebaseAuth.getInstance().getCurrentUser().getEmail();
+
+                        //Get auth credentials from the user for re-authentication.
+                        //Example with only email
+                        AuthCredential credential = EmailAuthProvider.getCredential(email, edtPassword.getText().toString());
+                        FirebaseAuth.getInstance().getCurrentUser()
+                                .reauthenticate(credential)
+                                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                    @Override
+                                    public void onComplete(@NonNull Task<Void> task) {
+                                        if (task.isSuccessful()) {
+                                            FirebaseAuth.getInstance().getCurrentUser()
+                                                    .updatePassword(edtRepeatPassword.getText().toString())
+                                                    .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                                        @Override
+                                                        public void onComplete(@NonNull Task<Void> task) {
+                                                            if (task.isSuccessful()) {
+                                                                //Update Driver information password column
+                                                                Map<String, Object> password = new HashMap<>();
+
+                                                                password.put("password", edtRepeatPassword.getText().toString());
+
+                                                                DatabaseReference driverInformation = FirebaseDatabase.getInstance().getReference(Common.user_driver_tb1);
+
+                                                                driverInformation.child(FirebaseAuth.getInstance().getCurrentUser().getUid())
+                                                                        .updateChildren(password)
+                                                                        .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                                                            @Override
+                                                                            public void onComplete(@NonNull Task<Void> task) {
+                                                                                if (task.isSuccessful())
+                                                                                    Toast.makeText(DriverHome.this, "Password was changed !", Toast.LENGTH_SHORT).show();
+                                                                                else
+                                                                                    Toast.makeText(DriverHome.this, "Password was changed but not update to Driver Information", Toast.LENGTH_SHORT).show();
+                                                                                waitingDialog.dismiss();
+                                                                            }
+                                                                        });
+                                                            } else {
+                                                                Toast.makeText(DriverHome.this, "Password should be atleast of 6 letters!", Toast.LENGTH_SHORT).show();
+                                                                waitingDialog.dismiss();
+                                                            }
+                                                        }
+                                                    });
+                                        } else {
+                                            waitingDialog.dismiss();
+                                            Toast.makeText(DriverHome.this, "Wrong old password", Toast.LENGTH_SHORT).show();
+                                        }
+                                    }
+                                });
+
+                    } else {
+                        waitingDialog.dismiss();
+                        Toast.makeText(DriverHome.this, "Password doesn't match", Toast.LENGTH_SHORT).show();
+                    }
+                }
+
+            }
+        });
+            alertDialog.setNegativeButton("CANCEL", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+                    dialogInterface.dismiss();
+                }
+            });
+            //Show Dialog
+        alertDialog.show();
+    }
+
+    private void signOut() {
+        FirebaseAuth.getInstance().signOut();
+        Intent intent = new Intent(DriverHome.this,MainActivity.class);
+        startActivity(intent);
+        finish();
+
     }
 
     @Override
