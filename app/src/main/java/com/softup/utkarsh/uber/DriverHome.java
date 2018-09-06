@@ -4,6 +4,7 @@ import android.Manifest;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -117,6 +118,7 @@ public class DriverHome extends AppCompatActivity
 {
 
     private GoogleMap mMap;
+    Context context;
 
     //Play Services
     private static final int MY_PERMISSION_REQUEST_CODE = 7000;
@@ -242,18 +244,94 @@ public class DriverHome extends AppCompatActivity
         navigationView.setNavigationItemSelectedListener(this);
 
         View navigationHeaderView = navigationView.getHeaderView(0);
-        TextView txtName = (TextView)navigationHeaderView.findViewById(R.id.txtDriverName);
+        final TextView txtName = (TextView)navigationHeaderView.findViewById(R.id.txtDriverName);
+        final TextView txtStars = (TextView)navigationHeaderView.findViewById(R.id.txtStars);
 
         CircleImageView imageAvatar = (CircleImageView) navigationHeaderView.findViewById(R.id.image_avatar);
 
         txtName.setText(Common.currentUser.getName());
+        txtStars.setText(Common.currentUser.getRates());
+
 
 
         if (Common.currentUser.getAvatarUrl() != null && !TextUtils.isEmpty(Common.currentUser.getAvatarUrl())) {
             Picasso.with(this)
                     .load(Common.currentUser.getAvatarUrl())
                     .into(imageAvatar);
+
         }
+
+        drawer.addDrawerListener(new DrawerLayout.DrawerListener() {
+
+            @Override
+            public void onDrawerSlide(View drawerView, float slideOffset) {
+                //Called when a drawer's position changes.
+
+            }
+
+            @Override
+            public void onDrawerOpened(View drawerView) {
+                //Called when a drawer has settled in a completely open state.
+                //The drawer is interactive at this point.
+                // If you have 2 drawers (left and right) you can distinguish
+                // them by using id of the drawerView. int id = drawerView.getId();
+                // id will be your layout's id: for example R.id.left_drawer
+                DatabaseReference rootRef = FirebaseDatabase.getInstance().getReference(Common.user_driver_tb1);
+                DatabaseReference uidRef = rootRef.child(FirebaseAuth.getInstance().getCurrentUser().getUid());
+                ValueEventListener valueEventListener = new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                        //  String userEmail = dataSnapshot.child("userEmail").getValue(String.class);
+                        // String userID = dataSnapshot.child("userID").getValue(String.class);
+                        String userName = dataSnapshot.child("rates").getValue(String.class);
+                        //String userUsername = dataSnapshot.child("userUsername").getValue(String.class);
+                        //Log.d("TAG", userEmail + " / " + userID + " / " + userName + " / " + userUsername);
+                        Common.currentUser.setRates(userName);
+                        txtStars.setText(userName);
+
+                    }
+
+                    @Override
+                    public void onCancelled(DatabaseError databaseError) {}
+                };
+                uidRef.addListenerForSingleValueEvent(valueEventListener);
+            }
+
+            @Override
+            public void onDrawerClosed(View drawerView) {
+                // Called when a drawer has settled in a completely closed state.
+            }
+
+            @Override
+            public void onDrawerStateChanged(int newState) {
+                // Called when the drawer motion state changes. The new state will be one of STATE_IDLE, STATE_DRAGGING or STATE_SETTLING.
+
+
+            }
+        });
+
+
+        //  DatabaseReference driverInformations = FirebaseDatabase.getInstance().getReference(Common.user_driver_tb1);
+        //driverInformations.child(FirebaseAuth.getInstance().getCurrentUser().getUid())
+
+     /*   DatabaseReference rootRef = FirebaseDatabase.getInstance().getReference(Common.user_driver_tb1);
+        DatabaseReference uidRef = rootRef.child(FirebaseAuth.getInstance().getCurrentUser().getUid());
+        ValueEventListener valueEventListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+              //  String userEmail = dataSnapshot.child("userEmail").getValue(String.class);
+               // String userID = dataSnapshot.child("userID").getValue(String.class);
+                String userName = dataSnapshot.child("name").getValue(String.class);
+                //String userUsername = dataSnapshot.child("userUsername").getValue(String.class);
+                //Log.d("TAG", userEmail + " / " + userID + " / " + userName + " / " + userUsername);
+                txtName.setText(userName);
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {}
+        };
+        uidRef.addListenerForSingleValueEvent(valueEventListener); */
+
 
 
 
@@ -351,6 +429,8 @@ public class DriverHome extends AppCompatActivity
         mService = Common.getGoogleAPI();
 
         updateFirebaseToken();
+
+
 
     }
 
@@ -721,8 +801,8 @@ public class DriverHome extends AppCompatActivity
 
     private void showDialogUpdateInfo() {
         AlertDialog.Builder alertDialog = new AlertDialog.Builder(DriverHome.this);
-        alertDialog.setTitle("UPDATE INFORMATION");
-        alertDialog.setMessage("Please fill all information");
+        alertDialog.setTitle("UPDATE PHOTO");
+        alertDialog.setMessage("Please your Photo");
         LayoutInflater inflater = this.getLayoutInflater();
         View layout_pwd = inflater.inflate(R.layout.layout_update_information,null);
         final MaterialEditText edtName = (MaterialEditText)layout_pwd.findViewById(R.id.edtName);
@@ -739,7 +819,7 @@ public class DriverHome extends AppCompatActivity
         alertDialog.setView(layout_pwd);
 
         //Set Button
-        alertDialog.setPositiveButton("UPDATE", new DialogInterface.OnClickListener() {
+        alertDialog.setPositiveButton("", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
                     dialogInterface.dismiss();
@@ -761,6 +841,31 @@ public class DriverHome extends AppCompatActivity
                             @Override
                             public void onComplete(@NonNull Task<Void> task) {
                                 if (task.isSuccessful()) {
+                                   // startActivity(getIntent());
+                                   // finish();
+                                    NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+
+                                    View navigationHeaderView = navigationView.getHeaderView(0);
+                                    final TextView txtName = (TextView)navigationHeaderView.findViewById(R.id.txtDriverName);
+                                    //txtName.setText(Common.currentUser.getName());
+                                    DatabaseReference rootRef = FirebaseDatabase.getInstance().getReference(Common.user_driver_tb1);
+                                    DatabaseReference uidRef = rootRef.child(FirebaseAuth.getInstance().getCurrentUser().getUid());
+                                    ValueEventListener valueEventListener = new ValueEventListener() {
+                                        @Override
+                                        public void onDataChange(DataSnapshot dataSnapshot) {
+                                            //  String userEmail = dataSnapshot.child("userEmail").getValue(String.class);
+                                            // String userID = dataSnapshot.child("userID").getValue(String.class);
+                                            String userName = dataSnapshot.child("name").getValue(String.class);
+                                            //String userUsername = dataSnapshot.child("userUsername").getValue(String.class);
+                                            //Log.d("TAG", userEmail + " / " + userID + " / " + userName + " / " + userUsername);
+                                            txtName.setText(userName);
+                                        }
+
+                                        @Override
+                                        public void onCancelled(DatabaseError databaseError) {}
+                                    };
+                                    uidRef.addListenerForSingleValueEvent(valueEventListener);
+
                                     Toast.makeText(DriverHome.this, "Information Updated ! !", Toast.LENGTH_SHORT).show();
 
                                 }
@@ -775,7 +880,7 @@ public class DriverHome extends AppCompatActivity
             }
         });
 
-        alertDialog.setNegativeButton("CANCEL", new DialogInterface.OnClickListener() {
+        alertDialog.setNegativeButton("BACK", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
                 dialogInterface.dismiss();
@@ -791,6 +896,7 @@ public class DriverHome extends AppCompatActivity
         intent.setType("image/*");
         intent.setAction(Intent.ACTION_GET_CONTENT);
         startActivityForResult(Intent.createChooser(intent,"Select Picture: "),Common.PICK_IMAGE_REQUEST);
+
     }
 
   /*  @Override
@@ -890,10 +996,41 @@ public class DriverHome extends AppCompatActivity
                                                 .addOnCompleteListener(new OnCompleteListener<Void>() {
                                                     @Override
                                                     public void onComplete(@NonNull Task<Void> task) {
-                                                        if (task.isSuccessful())
+                                                        if (task.isSuccessful()) {
+                                                            NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+                                                            View navigationHeaderView = navigationView.getHeaderView(0);
+                                                            final CircleImageView imageAvatar = (CircleImageView) navigationHeaderView.findViewById(R.id.image_avatar);
+
+                                                            DatabaseReference rootRef = FirebaseDatabase.getInstance().getReference(Common.user_driver_tb1);
+                                                            DatabaseReference uidRef = rootRef.child(FirebaseAuth.getInstance().getCurrentUser().getUid());
+                                                            ValueEventListener valueEventListener = new ValueEventListener() {
+                                                                @Override
+                                                                public void onDataChange(DataSnapshot dataSnapshot) {
+                                                                    //  String userEmail = dataSnapshot.child("userEmail").getValue(String.class);
+                                                                    // String userID = dataSnapshot.child("userID").getValue(String.class);
+                                                                    String userName = dataSnapshot.child("avatarUrl").getValue(String.class);
+                                                                    //String userUsername = dataSnapshot.child("userUsername").getValue(String.class);
+                                                                    //Log.d("TAG", userEmail + " / " + userID + " / " + userName + " / " + userUsername);
+                                                                   // txtName.setText(userName);
+                                                                    if (Common.currentUser.getAvatarUrl() != null && !TextUtils.isEmpty(Common.currentUser.getAvatarUrl())) {
+
+                                                                        Picasso.with(context)
+                                                                                .load(userName)
+                                                                                .into(imageAvatar);
+                                                                    }
+                                                                }
+
+                                                                @Override
+                                                                public void onCancelled(DatabaseError databaseError) {}
+                                                            };
+                                                            uidRef.addListenerForSingleValueEvent(valueEventListener);
+
                                                             Toast.makeText(DriverHome.this, "Uploaded", Toast.LENGTH_SHORT).show();
-                                                        else
+
+                                                        }
+                                                        else {
                                                             Toast.makeText(DriverHome.this, "Upload error", Toast.LENGTH_SHORT).show();
+                                                        }
 
                                                     }
                                                 });
@@ -909,6 +1046,7 @@ public class DriverHome extends AppCompatActivity
                             public void onProgress(UploadTask.TaskSnapshot taskSnapshot) {
                                 double progress = (100.0* taskSnapshot.getBytesTransferred() / taskSnapshot.getTotalByteCount());
                                 mDialog.setMessage("Uploaded"+progress+"%");
+
                             }
                         });
 

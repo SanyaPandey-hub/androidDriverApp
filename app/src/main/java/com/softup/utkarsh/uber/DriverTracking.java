@@ -183,6 +183,8 @@ public class DriverTracking extends FragmentActivity implements OnMapReadyCallba
                                 String time_text = timeObject.getString("text");
                                 Double time_value = Double.parseDouble(time_text.replaceAll("[^0-9\\\\.]+",""));
 
+                                sendDropOffNotification(customerId);
+
                                 //Now we need write function calculate fee base on barefee and distance + time
                                 Intent intent = new Intent(DriverTracking.this,TripDetail.class);
                                 intent.putExtra("start_address",legsObject.getString("start_address"));
@@ -347,6 +349,28 @@ public class DriverTracking extends FragmentActivity implements OnMapReadyCallba
             }
         });
     }
+
+    private void sendDropOffNotification(String customerId) {
+        Token token = new Token(customerId);
+        Notification notification = new Notification("DropOff",customerId);
+        Sender sender = new Sender(token.getToken(),notification);
+
+        mFCMService.sendMessage(sender).enqueue(new Callback<FCMResponse>() {
+            @Override
+            public void onResponse(Call<FCMResponse> call, Response<FCMResponse> response) {
+                if (response.body().success!=1)
+                {
+                    Toast.makeText(DriverTracking.this, "Failed", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<FCMResponse> call, Throwable t) {
+
+            }
+        });
+    }
+
 
     private void displayLocation() {
         if(ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED &&

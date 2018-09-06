@@ -1,18 +1,29 @@
 package com.softup.utkarsh.uber.Model;
 
 public class User {
-    private String email,password,name,phone,avatarUrl;
+    private String email,password,name,phone,avatarUrl,rates;
 
     public User() {
 
     }
 
-    public User(String email, String password, String name, String phone) {
+    public User(String email, String password, String name, String phone,String avatarUrl,String rates) {
         this.email = email;
         this.password = password;
         this.name = name;
         this.phone = phone;
-        this.avatarUrl=avatarUrl;
+        this.avatarUrl = avatarUrl;
+        this.rates = rates;
+
+
+    }
+
+    public String getRates() {
+        return rates;
+    }
+
+    public void setRates(String rates) {
+        this.rates = rates;
     }
 
     public String getAvatarUrl() {

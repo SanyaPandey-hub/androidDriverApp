@@ -306,6 +306,8 @@ public class MainActivity extends AppCompatActivity{
                                 user.setName(edtName.getText().toString());
                                 user.setPhone(edtPhone.getText().toString());
                                 user.setPassword(edtPassword.getText().toString());
+                                user.setAvatarUrl("https://firebasestorage.googleapis.com/v0/b/uber-798e0.appspot.com/o/add_image.png?alt=media&token=4433425f-b9dd-47f1-9364-a70679cefb7a");
+                                user.setRates("0.0");
 
                                 //Use email to key
                                 users.child(FirebaseAuth.getInstance().getCurrentUser().getUid())
